@@ -51,9 +51,12 @@ def parse_args():
         help="local ASN for the announcement",
     )
 
+
     parser.add_argument("--random-path", action="store_true", default=False)
     parser.add_argument("--bogon-path", action="store_true", default=False)
     parser.add_argument("--max-path-length", type=int, default=10)
+    parser.add_argument("--load-test", action="store_true", default=False)
+    
 
     return parser.parse_args()
 
@@ -179,6 +182,12 @@ def gen_public_routes(number=10, prefix_len: int = 24):
             break
 
 
+def gen_load_test(prefix_len:int =24):
+    network = ipaddress.ip_network('0.0.0.0/0')
+    for subnet in network.subnets(new_prefix=prefix_len):
+        yield str(subnet)
+
+
 def main(args):
     if args.bogon_path or args.random_path:
         # RFC7607, 2 to 4 byte ASN migrations, # RFC7300
@@ -206,6 +215,11 @@ def main(args):
         generators.append(gen_martians)
     if args.public_ranges:
         generators.append(gen_public_routes)
+    if args.load_test:
+        generators.clear()
+        generators.append(gen_load_test)
+
+    communities = args.communities.split(",")
 
     for generator in generators:
         for subnet in generator():
@@ -220,7 +234,7 @@ def main(args):
             ## Back off timer if router is too slow:
             ##time.sleep(0.001)
             __print_announcement(
-                subnet, args.next_hop, communities=[], as_path=as_path
+                subnet, args.next_hop, communities=communities, as_path=as_path
             )
 
 
